@@ -1,0 +1,31 @@
+{
+  "id": "clock",
+  "name": "时钟",
+  "description": "显示当前时间和日期，支持12/24小时制切换",
+  "version": "1.0.0",
+  "author": "EchoTab",
+  "type": "builtin",
+  "icon": "⏰",
+  "defaultSize": {
+    "w": 4,
+    "h": 2
+  },
+  "minSize": {
+    "w": 2,
+    "h": 1
+  },
+  "maxSize": {
+    "w": 8,
+    "h": 4
+  },
+  "configSchema": {
+    "format24h": {
+      "type": "boolean",
+      "default": true,
+      "label": "24小时制",
+      "description": "使用24小时制显示时间"
+    }
+  },
+  "tags": ["时间", "工具", "实用"],
+  "category": "productivity"
+}

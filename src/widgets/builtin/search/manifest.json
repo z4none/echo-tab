@@ -1,0 +1,32 @@
+{
+  "id": "search",
+  "name": "搜索",
+  "description": "多引擎搜索框，支持 Google、Bing、百度、DuckDuckGo",
+  "version": "1.0.0",
+  "author": "EchoTab",
+  "type": "builtin",
+  "icon": "🔍",
+  "defaultSize": {
+    "w": 5,
+    "h": 1
+  },
+  "minSize": {
+    "w": 3,
+    "h": 1
+  },
+  "maxSize": {
+    "w": 10,
+    "h": 2
+  },
+  "configSchema": {
+    "engine": {
+      "type": "select",
+      "default": "google",
+      "options": ["google", "bing", "baidu", "duckduckgo"],
+      "label": "搜索引擎",
+      "description": "选择默认搜索引擎"
+    }
+  },
+  "tags": ["搜索", "工具", "实用"],
+  "category": "productivity"
+}

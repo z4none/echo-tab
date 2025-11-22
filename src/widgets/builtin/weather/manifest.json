@@ -1,0 +1,38 @@
+{
+  "id": "weather",
+  "name": "天气",
+  "description": "显示实时天气信息，支持地理定位和城市搜索，数据来自 Open-Meteo API",
+  "version": "1.0.0",
+  "author": "EchoTab",
+  "type": "builtin",
+  "icon": "🌤️",
+  "defaultSize": {
+    "w": 5,
+    "h": 3
+  },
+  "minSize": {
+    "w": 3,
+    "h": 1
+  },
+  "maxSize": {
+    "w": 8,
+    "h": 6
+  },
+  "configSchema": {
+    "unit": {
+      "type": "select",
+      "default": "celsius",
+      "options": ["celsius", "fahrenheit"],
+      "label": "温度单位",
+      "description": "选择摄氏度或华氏度"
+    },
+    "location": {
+      "type": "object",
+      "label": "位置",
+      "description": "天气数据的位置信息"
+    }
+  },
+  "tags": ["天气", "实用", "信息"],
+  "category": "information",
+  "permissions": ["geolocation"]
+}
