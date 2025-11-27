@@ -1,12 +1,50 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// 辅助函数：查找空闲位置
+const findEmptyPosition = (state, w, h) => {
+  const { cols } = state.gridConfig;
+  const occupied = new Set();
+
+  // 标记所有被占用的格子
+  state.layout.forEach((item) => {
+    for (let y = item.y; y < item.y + item.h; y++) {
+      for (let x = item.x; x < item.x + item.w; x++) {
+        occupied.add(`${x},${y}`);
+      }
+    }
+  });
+
+  // 从第 5 行开始查找（为 widgets 预留空间）
+  for (let y = 5; y < 100; y++) {
+    for (let x = 0; x <= cols - w; x++) {
+      let canPlace = true;
+      for (let dy = 0; dy < h && canPlace; dy++) {
+        for (let dx = 0; dx < w && canPlace; dx++) {
+          if (occupied.has(`${x + dx},${y + dy}`)) {
+            canPlace = false;
+          }
+        }
+      }
+      if (canPlace) {
+        return { x, y };
+      }
+    }
+  }
+
+  return { x: 0, y: 5 }; // 默认位置
+};
+
 const useStore = create(
   persist(
     (set) => ({
       // 主题设置
       theme: 'light',
       setTheme: (theme) => set({ theme }),
+
+      // 字体源设置
+      fontSource: 'google', // 'google' | 'china'
+      setFontSource: (source) => set({ fontSource: source }),
 
       // 网站快捷方式
       shortcuts: [],
@@ -15,33 +53,7 @@ const useStore = create(
           const id = Date.now();
           const newShortcut = { ...shortcut, id };
 
-          // 找到第一个空闲的位置
-          const findEmptyPosition = () => {
-            const { cols } = state.gridConfig;
-            const occupied = new Set();
-
-            // 标记所有被占用的格子
-            state.layout.forEach((item) => {
-              for (let y = item.y; y < item.y + item.h; y++) {
-                for (let x = item.x; x < item.x + item.w; x++) {
-                  occupied.add(`${x},${y}`);
-                }
-              }
-            });
-
-            // 从第 5 行开始查找（为 widgets 预留空间）
-            for (let y = 5; y < 100; y++) {
-              for (let x = 0; x < cols; x++) {
-                if (!occupied.has(`${x},${y}`)) {
-                  return { x, y };
-                }
-              }
-            }
-
-            return { x: 0, y: 5 }; // 默认位置
-          };
-
-          const position = findEmptyPosition();
+          const position = findEmptyPosition(state, 1, 1);
 
           return {
             shortcuts: [...state.shortcuts, newShortcut],
@@ -64,9 +76,13 @@ const useStore = create(
         })),
       reorderShortcuts: (shortcuts) => set({ shortcuts }),
 
-      // Widget 配置
+      // Widget 实例配置（新架构）
+      widgetInstances: [],
+      // 格式：{ id: 'clock-xxx', type: 'clock', config: {...}, createdAt: '', updatedAt: '' }
+
+      // 旧的 Widget 配置（保留用于兼容和迁移）
       widgets: {
-        clock: { enabled: true, format24h: true },
+        clock: { enabled: false, format24h: true },
         weather: {
           enabled: false,
           unit: 'celsius', // 'celsius' | 'fahrenheit'
@@ -78,10 +94,21 @@ const useStore = create(
           },
           savedCities: [], // 保存的常用城市列表
         },
-        search: { enabled: true, engine: 'google' },
+        search: { enabled: false, engine: 'google' },
         todo: {
-          enabled: true, // 启用待办事项
+          enabled: false, // 启用待办事项
           items: [], // 待办事项列表
+        },
+        notes: {
+          enabled: false, // 笔记功能总开关
+          instances: {}, // 笔记实例：{ 'note-xxx': { id, title, content, createdAt, updatedAt, isEditing } }
+          settings: {
+            defaultTitle: '新笔记',
+          },
+        },
+        speeddial: {
+          enabled: false, // SpeedDial 功能开关（默认禁用）
+          bindings: {}, // 键位绑定：{ 'a': 'https://example.com', 'x': 'https://x.com', ... }
         },
       },
       updateWidget: (widgetName, config) =>
@@ -92,12 +119,168 @@ const useStore = create(
           },
         })),
 
+      // 笔记实例管理
+      addNoteInstance: (config = {}) =>
+        set((state) => {
+          const id = `note-${Date.now()}`;
+
+          // 确保 notes 配置存在
+          const notesConfig = state.widgets.notes || {
+            enabled: true,
+            instances: {},
+            settings: { defaultTitle: '新笔记' },
+          };
+
+          const defaultConfig = {
+            id,
+            title: notesConfig.settings.defaultTitle,
+            content: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isEditing: true, // 新建时默认编辑模式
+          };
+
+          const newInstance = { ...defaultConfig, ...config };
+
+          // 查找空位置（默认尺寸 4x4）
+          const position = findEmptyPosition(state, 4, 4);
+
+          return {
+            widgets: {
+              ...state.widgets,
+              notes: {
+                ...notesConfig,
+                instances: {
+                  ...notesConfig.instances,
+                  [id]: newInstance,
+                },
+              },
+            },
+            layout: [
+              ...state.layout,
+              { id, x: position.x, y: position.y, w: 4, h: 4 },
+            ],
+          };
+        }),
+
+      updateNoteInstance: (instanceId, updates) =>
+        set((state) => {
+          // 确保 notes 配置存在
+          if (!state.widgets.notes?.instances?.[instanceId]) {
+            console.warn(`[Store] 笔记实例 ${instanceId} 不存在`);
+            return state;
+          }
+
+          return {
+            widgets: {
+              ...state.widgets,
+              notes: {
+                ...state.widgets.notes,
+                instances: {
+                  ...state.widgets.notes.instances,
+                  [instanceId]: {
+                    ...state.widgets.notes.instances[instanceId],
+                    ...updates,
+                    updatedAt: new Date().toISOString(),
+                  },
+                },
+              },
+            },
+          };
+        }),
+
+      removeNoteInstance: (instanceId) =>
+        set((state) => {
+          // 确保 notes 配置存在
+          if (!state.widgets.notes?.instances) {
+            console.warn(`[Store] notes.instances 不存在`);
+            return state;
+          }
+
+          const { [instanceId]: removed, ...remainingInstances } = state.widgets.notes.instances;
+
+          return {
+            widgets: {
+              ...state.widgets,
+              notes: {
+                ...state.widgets.notes,
+                instances: remainingInstances,
+              },
+            },
+            layout: state.layout.filter((item) => item.id !== instanceId),
+          };
+        }),
+
+      // ==================== 新的 Widget 实例管理方法 ====================
+
+      // 添加 Widget 实例
+      addWidgetInstance: (type, config = {}, size = {}) =>
+        set((state) => {
+          const id = `${type}-${Date.now()}`;
+          const now = new Date().toISOString();
+
+          // 创建新的 widget 实例
+          const newInstance = {
+            id,
+            type,
+            config,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          // 查找空位置（使用 size 或默认尺寸）
+          const { w = 4, h = 4 } = size;
+          const position = findEmptyPosition(state, w, h);
+
+          return {
+            widgetInstances: [...state.widgetInstances, newInstance],
+            layout: [
+              ...state.layout,
+              { id, x: position.x, y: position.y, w, h },
+            ],
+          };
+        }),
+
+      // 更新 Widget 实例配置
+      updateWidgetInstance: (id, configUpdates) =>
+        set((state) => {
+          const instanceIndex = state.widgetInstances.findIndex((inst) => inst.id === id);
+          if (instanceIndex === -1) {
+            console.warn(`[Store] Widget 实例 ${id} 不存在`);
+            return state;
+          }
+
+          const newInstances = [...state.widgetInstances];
+          newInstances[instanceIndex] = {
+            ...newInstances[instanceIndex],
+            config: {
+              ...newInstances[instanceIndex].config,
+              ...configUpdates,
+            },
+            updatedAt: new Date().toISOString(),
+          };
+
+          return { widgetInstances: newInstances };
+        }),
+
+      // 删除 Widget 实例
+      removeWidgetInstance: (id) =>
+        set((state) => ({
+          widgetInstances: state.widgetInstances.filter((inst) => inst.id !== id),
+          layout: state.layout.filter((item) => item.id !== id),
+        })),
+
+      // 获取 Widget 实例
+      getWidgetInstance: (id) => (state) => {
+        return state.widgetInstances.find((inst) => inst.id === id);
+      },
+
       // Widget 统一样式配置
       widgetStyles: {
         // 背景样式
         background: {
-          base: 'white',           // 浅色模式基础背景
-          baseDark: 'gray-800',    // 深色模式基础背景
+          color: '#ffffff',        // 浅色模式背景颜色 (RGB hex)
+          colorDark: '#1f2937',    // 深色模式背景颜色 (RGB hex)
           opacity: 80,             // 背景透明度 (0-100)
           blur: 'md',              // 背景模糊: 'none' | 'sm' | 'md' | 'lg' | 'xl'
         },
@@ -167,12 +350,7 @@ const useStore = create(
         })),
 
       // 网格布局（存储每个元素的位置和大小）
-      layout: [
-        { id: 'clock', x: 4, y: 0, w: 4, h: 2 },
-        { id: 'weather', x: 4, y: 2, w: 5, h: 1 },
-        { id: 'search', x: 4, y: 3, w: 5, h: 1 },
-        { id: 'todo', x: 1, y: 0, w: 3, h: 4 },
-      ],
+      layout: [],
       updateLayout: (id, position) =>
         set((state) => {
           const existingIndex = state.layout.findIndex((item) => item.id === id);
@@ -238,6 +416,64 @@ const useStore = create(
           // 如果没有 cellSize，设置默认值
           if (!grid.cellSize) {
             grid.cellSize = 96;
+          }
+        }
+
+        // 初始化笔记配置（如果不存在）
+        if (!persistedState.widgets?.notes) {
+          if (!persistedState.widgets) {
+            persistedState.widgets = {};
+          }
+          persistedState.widgets.notes = {
+            enabled: true,
+            instances: {},
+            settings: {
+              defaultTitle: '新笔记',
+            },
+          };
+        }
+
+        // 迁移旧的 speedDial 到 speeddial（统一命名）
+        if (persistedState.widgets?.speedDial) {
+          persistedState.widgets.speeddial = persistedState.widgets.speedDial;
+          delete persistedState.widgets.speedDial;
+        }
+
+        // 初始化 SpeedDial 配置（如果不存在）
+        if (!persistedState.widgets?.speeddial) {
+          if (!persistedState.widgets) {
+            persistedState.widgets = {};
+          }
+          persistedState.widgets.speeddial = {
+            enabled: false, // 默认禁用，需要用户手动启用
+            bindings: {},
+          };
+        }
+
+        // 迁移 widgetStyles 背景配置（从 base/baseDark 到 color/colorDark）
+        if (persistedState.widgetStyles?.background) {
+          const bg = persistedState.widgetStyles.background;
+
+          // 如果使用旧格式 (base/baseDark)，转换为新格式 (color/colorDark)
+          if (bg.base && !bg.color) {
+            // 将 Tailwind 类名转换为 hex 颜色
+            const colorMap = {
+              'white': '#ffffff',
+              'gray-800': '#1f2937',
+              'gray-900': '#111827',
+            };
+            bg.color = colorMap[bg.base] || '#ffffff';
+            delete bg.base;
+          }
+
+          if (bg.baseDark && !bg.colorDark) {
+            const colorMap = {
+              'white': '#ffffff',
+              'gray-800': '#1f2937',
+              'gray-900': '#111827',
+            };
+            bg.colorDark = colorMap[bg.baseDark] || '#1f2937';
+            delete bg.baseDark;
           }
         }
 

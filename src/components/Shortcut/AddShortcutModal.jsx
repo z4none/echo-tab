@@ -23,6 +23,20 @@ const AddShortcutModal = ({ isOpen, onClose, onSave, editingShortcut }) => {
     setErrors({});
   }, [editingShortcut, isOpen]);
 
+  // ESC 键关闭弹窗
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleUrlBlur = () => {
     if (formData.url && !formData.name) {
       const normalized = normalizeUrl(formData.url);

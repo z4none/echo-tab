@@ -4,12 +4,20 @@ import useStore from '../../../store/useStore';
 import { useWidgetStyles } from '../../core/widgetStyles';
 
 /**
- * Todo Widget - 简单的待办事项管理
+ * Todo Widget - 多实例支持
+ * @param {string} instanceId - 实例 ID (可选，用于多实例)
+ * @param {object} config - Widget 配置 (从新架构传入)
+ * @param {object} manifest - Widget manifest 信息
  */
-function Todo() {
-  const { widgets, updateWidget } = useStore();
-  const widgetStyles = useWidgetStyles(useStore);
-  const todoConfig = widgets.todo || { items: [] };
+function Todo({ instanceId, config, manifest }) {
+  const { widgets, updateWidget, updateWidgetInstance } = useStore();
+
+  // 获取背景样式配置（从 config 或 manifest）
+  const showBackground = config?.showBackground ?? manifest?.defaultBackground ?? true;
+  const widgetStyles = useWidgetStyles(useStore, { showBackground });
+
+  // 优先使用传入的 config，否则使用旧架构的配置（兼容性）
+  const todoConfig = config || widgets.todo || { items: [] };
   const [items, setItems] = useState(todoConfig.items || []);
   const [inputValue, setInputValue] = useState('');
   const [draggedItemId, setDraggedItemId] = useState(null);
@@ -17,8 +25,12 @@ function Todo() {
 
   // 同步到 store
   useEffect(() => {
-    updateWidget('todo', { items });
-  }, [items, updateWidget]);
+    if (instanceId) {
+      updateWidgetInstance(instanceId, { items });
+    } else {
+      updateWidget('todo', { items });
+    }
+  }, [items, instanceId, updateWidget, updateWidgetInstance]);
 
   // 添加待办事项
   const handleAdd = () => {
@@ -105,7 +117,7 @@ function Todo() {
   const activeCount = totalCount - completedCount;
 
   return (
-    <div className={`${widgetStyles.containerClass} flex flex-col`}>
+    <div className={`${widgetStyles.containerClass} flex flex-col`} style={widgetStyles.containerStyle}>
       {/* 标题和统计 */}
       <div className="flex items-center justify-between mb-3">
         <h3 className={`text-lg font-semibold ${widgetStyles.textPrimary}`}>
@@ -128,7 +140,7 @@ function Todo() {
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="添加新任务..."
-          className={`flex-1 px-3 py-2 text-sm ${widgetStyles.inputClass} placeholder-gray-400`}
+          className={`flex-1 px-3 py-2 text-sm ${widgetStyles.inputClass}`}
         />
         <button
           onClick={handleAdd}

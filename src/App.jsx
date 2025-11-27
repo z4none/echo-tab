@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { MdEdit, MdEditOff, MdLightMode, MdDarkMode, MdAdd } from 'react-icons/md';
+import { MdEdit, MdEditOff, MdLightMode, MdDarkMode, MdAdd, MdWidgets } from 'react-icons/md';
 import useStore from './store/useStore';
 import GridLayout from './components/Grid/GridLayout';
 import AddShortcutModal from './components/Shortcut/AddShortcutModal';
 import SettingsPanel from './components/Settings/SettingsPanel';
+import WidgetStore from './components/WidgetStore/WidgetStore';
+import WidgetConfig from './components/WidgetConfig/WidgetConfig';
 // 导入 Widget 系统，自动注册所有内置 Widgets
 import './widgets';
 
@@ -23,6 +25,8 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingShortcut, setEditingShortcut] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isWidgetStoreOpen, setIsWidgetStoreOpen] = useState(false);
+  const [configWidgetId, setConfigWidgetId] = useState(null);
 
   useEffect(() => {
     // 应用主题
@@ -112,7 +116,7 @@ function App() {
   };
 
   return (
-    <div className="h-screen overflow-hidden">
+    <div className="h-screen overflow-hidden select-none">
       {/* 主内容区域 */}
       <div className="h-full relative overflow-hidden">
         {/* 背景层 */}
@@ -131,11 +135,21 @@ function App() {
             <GridLayout
               onEditShortcut={handleEditClick}
               onDeleteShortcut={handleDeleteShortcut}
+              onConfigWidget={(widgetId) => setConfigWidgetId(widgetId)}
             />
           </div>
 
           {/* 右下角工具栏 */}
           <div className="fixed bottom-4 right-4 flex gap-2 z-20">
+            {/* Widget Store 按钮 */}
+            <button
+              onClick={() => setIsWidgetStoreOpen(true)}
+              className="p-3 bg-purple-500 text-white rounded-full shadow-lg hover:shadow-xl hover:bg-purple-600 transition-all"
+              title="添加 Widget"
+            >
+              <MdWidgets size={24} />
+            </button>
+
             {/* 添加网站按钮 */}
             <button
               onClick={handleAddClick}
@@ -216,6 +230,19 @@ function App() {
       <SettingsPanel
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      {/* Widget Store 侧栏 */}
+      <WidgetStore
+        isOpen={isWidgetStoreOpen}
+        onClose={() => setIsWidgetStoreOpen(false)}
+      />
+
+      {/* Widget Config 侧栏 */}
+      <WidgetConfig
+        widgetId={configWidgetId}
+        isOpen={!!configWidgetId}
+        onClose={() => setConfigWidgetId(null)}
       />
     </div>
   );

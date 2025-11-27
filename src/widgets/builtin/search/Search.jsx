@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import useStore from '../../../store/useStore';
+import { useWidgetStyles } from '../../core/widgetStyles';
 
 // 搜索引擎图标组件
 const GoogleIcon = () => (
@@ -64,15 +65,42 @@ const SEARCH_ENGINES = {
   },
 };
 
-const Search = () => {
-  const { widgets, updateWidget } = useStore();
+/**
+ * Search Widget - 多实例支持
+ * @param {string} instanceId - 实例 ID (可选，用于多实例)
+ * @param {object} config - Widget 配置 (从新架构传入)
+ * @param {object} manifest - Widget manifest 信息
+ */
+const Search = ({ instanceId, config, manifest }) => {
+  const { widgets, updateWidget, updateWidgetInstance, theme } = useStore();
+
+  // 获取背景样式配置（从 config 或 manifest）
+  const showBackground = config?.showBackground ?? manifest?.defaultBackground ?? false;
+  const widgetStyles = useWidgetStyles(useStore, { showBackground });
   const [query, setQuery] = useState('');
   const [showEngineMenu, setShowEngineMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
-  const currentEngine = widgets.search.engine || 'google';
+
+  // 优先使用传入的 config，否则使用旧架构的配置（兼容性）
+  const searchConfig = config || widgets.search || { engine: 'google' };
+  const currentEngine = searchConfig.engine || 'google';
   const CurrentEngineIcon = SEARCH_ENGINES[currentEngine].icon;
+
+  // 根据主题动态生成搜索框样式
+  const isDark = theme === 'dark';
+  const inputClassName = `
+    w-full
+    py-2.5 pl-12 pr-12 text-base
+    ${isDark ? 'bg-gray-800 text-gray-100 placeholder-gray-500 border-gray-700' : 'bg-white text-gray-900 placeholder-gray-400 border-gray-200'}
+    border
+    rounded-2xl
+    focus:outline-none ${isDark ? 'focus:border-primary-500' : 'focus:border-primary-400'}
+    ${isDark ? 'hover:border-gray-600' : 'hover:border-gray-300'}
+    transition-all duration-200 ease-in-out
+    shadow-sm hover:shadow-md focus:shadow-lg
+  `.trim().replace(/\s+/g, ' ');
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -84,7 +112,11 @@ const Search = () => {
   };
 
   const handleEngineChange = (engine) => {
-    updateWidget('search', { engine });
+    if (instanceId) {
+      updateWidgetInstance(instanceId, { engine });
+    } else {
+      updateWidget('search', { engine });
+    }
     setShowEngineMenu(false);
   };
 
@@ -115,108 +147,129 @@ const Search = () => {
 
   return (
     <>
-      <div className="w-full max-w-2xl mx-auto">
-        <form onSubmit={handleSearch} className="relative">
-          {/* 搜索输入框 */}
-          <div className="relative flex items-center">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={SEARCH_ENGINES[currentEngine].placeholder}
-              className="
-                w-full pl-14 pr-24 py-4 text-lg
-                bg-white/90 dark:bg-gray-800/90 backdrop-blur-glass
-                text-gray-800 dark:text-white
-                placeholder-gray-400 dark:placeholder-gray-500
-                border border-gray-200 dark:border-gray-700
-                rounded-full shadow-lg
-                focus:outline-none focus:ring-2 focus:ring-primary-500
-                transition-all duration-300
-              "
-            />
+      <div className={widgetStyles.containerClass} style={widgetStyles.containerStyle}>
+        <div className="w-full h-full flex items-center justify-center">
+          <form
+            onSubmit={handleSearch}
+            className="relative w-full max-w-2xl"
+          >
+            {/* 搜索输入框容器 */}
+            <div className="relative flex items-center group">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={SEARCH_ENGINES[currentEngine].placeholder}
+                className={inputClassName}
+              />
 
-            {/* 搜索引擎图标（可点击） */}
-            <button
-              ref={buttonRef}
-              type="button"
-              onClick={handleToggleMenu}
-              className="
-                absolute left-4
-                p-1.5 rounded-full
-                hover:bg-gray-100 dark:hover:bg-gray-700
-                transition-colors duration-200
-                focus:outline-none focus:ring-2 focus:ring-primary-500
-              "
-              title="选择搜索引擎"
-            >
-              <CurrentEngineIcon />
-            </button>
+              {/* 搜索引擎图标（左侧，可点击） */}
+              <button
+                ref={buttonRef}
+                type="button"
+                onClick={handleToggleMenu}
+                className={`
+                  absolute left-3 p-1.5
+                  rounded-full
+                  ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}
+                  active:scale-95
+                  transition-all duration-150
+                  focus:outline-none
+                `}
+                title="选择搜索引擎"
+              >
+                <div className="w-5 h-5">
+                  <CurrentEngineIcon />
+                </div>
+              </button>
 
-            {/* 搜索按钮 */}
-            <button
-              type="submit"
-              className="
-                absolute right-2
-                px-6 py-2 text-sm font-medium
-                bg-primary-500 text-white
-                rounded-full
-                hover:bg-primary-600
-                focus:outline-none focus:ring-2 focus:ring-primary-500
-                transition-all duration-300
-                shadow-md
-              "
-            >
-              搜索
-            </button>
-          </div>
-        </form>
+              {/* 搜索按钮（右侧图标） */}
+              <button
+                type="submit"
+                disabled={!query.trim()}
+                className={`
+                  absolute right-3 p-1.5
+                  rounded-full
+                  ${query.trim()
+                    ? `text-primary-500 ${isDark ? 'hover:bg-primary-900/20' : 'hover:bg-primary-50'} active:scale-95`
+                    : `${isDark ? 'text-gray-600' : 'text-gray-300'} cursor-not-allowed`
+                  }
+                  transition-all duration-150
+                  focus:outline-none focus:ring-2 focus:ring-primary-400
+                `}
+                title="搜索"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
 
-      {/* 使用 Portal 渲染下拉菜单到 body */}
+      {/* 使用 Portal 渲染搜索引擎选择器到 body - 横向图标网格 */}
       {showEngineMenu && createPortal(
         <div
           ref={menuRef}
-          className="
-            fixed py-2
-            bg-white dark:bg-gray-800
-            border border-gray-200 dark:border-gray-700
-            rounded-xl shadow-xl
-            min-w-[180px]
+          className={`
+            fixed p-4
+            ${isDark ? 'bg-gray-800/95 border-gray-700' : 'bg-white/95 border-gray-200'}
+            backdrop-blur-md
+            border
+            rounded-2xl shadow-2xl
             z-[9999]
             animate-in fade-in zoom-in duration-200
-          "
+          `}
           style={{
             top: `${menuPosition.top}px`,
             left: `${menuPosition.left}px`,
           }}
         >
-          {Object.entries(SEARCH_ENGINES).map(([key, engine]) => {
-            const EngineIcon = engine.icon;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleEngineChange(key)}
-                className={`
-                  w-full px-4 py-2.5 flex items-center gap-3
-                  hover:bg-gray-100 dark:hover:bg-gray-700
-                  transition-colors duration-200
-                  ${currentEngine === key ? 'bg-primary-50 dark:bg-primary-900/20' : ''}
-                `}
-              >
-                <EngineIcon />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  {engine.name}
-                </span>
-                {currentEngine === key && (
-                  <svg className="w-4 h-4 ml-auto text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                  </svg>
-                )}
-              </button>
-            );
-          })}
+          <div className="grid grid-cols-4 gap-3">
+            {Object.entries(SEARCH_ENGINES).map(([key, engine]) => {
+              const EngineIcon = engine.icon;
+              const isSelected = currentEngine === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleEngineChange(key)}
+                  className={`
+                    relative flex flex-col items-center gap-2 p-3 rounded-xl
+                    transition-all duration-200
+                    ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}
+                    ${isSelected ? `${isDark ? 'bg-primary-900/30' : 'bg-primary-50'} ring-2 ring-primary-500` : ''}
+                  `}
+                  title={engine.name}
+                >
+                  <div className="w-12 h-12 flex items-center justify-center">
+                    <EngineIcon />
+                  </div>
+                  <span className={`text-xs font-medium ${isSelected ? (isDark ? 'text-primary-400' : 'text-primary-600') : (isDark ? 'text-gray-300' : 'text-gray-600')}`}>
+                    {engine.name}
+                  </span>
+                  {isSelected && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>,
         document.body
       )}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MdRefresh, MdLocationOn } from 'react-icons/md';
 import useStore from '../../../store/useStore';
+import { useWidgetStyles } from '../../core/widgetStyles';
 import {
   getCurrentWeather,
   getCurrentPosition,
@@ -8,9 +9,30 @@ import {
   getWeatherDescription,
 } from './weatherUtils';
 
-function Weather() {
-  const { widgets, updateWidget } = useStore();
-  const { location = {}, unit } = widgets.weather;
+/**
+ * Weather Widget - 多实例支持
+ * @param {string} instanceId - 实例 ID (可选，用于多实例)
+ * @param {object} config - Widget 配置 (从新架构传入)
+ * @param {object} manifest - Widget manifest 信息
+ */
+function Weather({ instanceId, config, manifest }) {
+  const { widgets, updateWidget, updateWidgetInstance } = useStore();
+
+  // 获取背景样式配置（从 config 或 manifest）
+  const showBackground = config?.showBackground ?? manifest?.defaultBackground ?? true;
+  const widgetStyles = useWidgetStyles(useStore, { showBackground });
+
+  // 优先使用传入的 config，否则使用旧架构的配置（兼容性）
+  const widgetConfig = config || widgets.weather || {
+    unit: 'celsius',
+    location: {
+      latitude: null,
+      longitude: null,
+      name: '',
+      timezone: 'auto',
+    },
+  };
+  const { location = {}, unit } = widgetConfig;
 
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -53,15 +75,22 @@ function Weather() {
     try {
       const position = await getCurrentPosition();
 
-      // 更新位置信息（名称暂时为空，在设置面板中搜索后会更新）
-      updateWidget('weather', {
+      // 更新位置信息
+      const locationData = {
         location: {
           latitude: position.latitude,
           longitude: position.longitude,
           name: '当前位置',
           timezone: 'auto',
         },
-      });
+      };
+
+      // 使用新架构或旧架构的更新方法
+      if (instanceId) {
+        updateWidgetInstance(instanceId, locationData);
+      } else {
+        updateWidget('weather', locationData);
+      }
     } catch (err) {
       setError(err.message || '获取位置失败');
       console.error('获取位置失败:', err);
@@ -121,10 +150,12 @@ function Weather() {
   // 位置获取中
   if (locationLoading) {
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
-          <span className="text-gray-700 dark:text-gray-200">获取位置中...</span>
+      <div ref={containerRef} className={widgetStyles.containerClass} style={widgetStyles.containerStyle}>
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+            <span className="text-gray-700 dark:text-gray-200">获取位置中...</span>
+          </div>
         </div>
       </div>
     );
@@ -133,22 +164,24 @@ function Weather() {
   // 未配置位置
   if (!location?.latitude || !location?.longitude) {
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl shadow-lg p-4">
-        <div className="flex flex-col items-center gap-3 max-w-xs text-center">
-          <span className="text-yellow-500 text-3xl">⚠️</span>
-          <span className="text-gray-700 dark:text-gray-200 text-sm">
-            请在设置中配置天气位置
-          </span>
-          {error && (
-            <span className="text-xs text-red-500 dark:text-red-400">{error}</span>
-          )}
-          <button
-            onClick={handleUseCurrentLocation}
-            className="px-4 py-2 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-2"
-          >
-            <MdLocationOn size={16} />
-            使用当前位置
-          </button>
+      <div ref={containerRef} className={widgetStyles.containerClass} style={widgetStyles.containerStyle}>
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 max-w-xs text-center">
+            <span className="text-yellow-500 text-3xl">⚠️</span>
+            <span className="text-gray-700 dark:text-gray-200 text-sm">
+              请在设置中配置天气位置
+            </span>
+            {error && (
+              <span className="text-xs text-red-500 dark:text-red-400">{error}</span>
+            )}
+            <button
+              onClick={handleUseCurrentLocation}
+              className="px-4 py-2 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-2"
+            >
+              <MdLocationOn size={16} />
+              使用当前位置
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -157,10 +190,12 @@ function Weather() {
   // 加载中
   if (loading && !weather) {
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
-          <span className="text-gray-700 dark:text-gray-200">加载天气中...</span>
+      <div ref={containerRef} className={widgetStyles.containerClass} style={widgetStyles.containerStyle}>
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+            <span className="text-gray-700 dark:text-gray-200">加载天气中...</span>
+          </div>
         </div>
       </div>
     );
@@ -169,17 +204,19 @@ function Weather() {
   // 错误状态
   if (error && !weather) {
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl shadow-lg p-4">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <span className="text-red-500 text-3xl">❌</span>
-          <span className="text-red-500 dark:text-red-400 text-sm">{error}</span>
-          <button
-            onClick={handleRefresh}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-            title="重试"
-          >
-            <MdRefresh className="text-gray-600 dark:text-gray-300" size={20} />
-          </button>
+      <div ref={containerRef} className={widgetStyles.containerClass} style={widgetStyles.containerStyle}>
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <span className="text-red-500 text-3xl">❌</span>
+            <span className="text-red-500 dark:text-red-400 text-sm">{error}</span>
+            <button
+              onClick={handleRefresh}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+              title="重试"
+            >
+              <MdRefresh className="text-gray-600 dark:text-gray-300" size={20} />
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -199,8 +236,8 @@ function Weather() {
     // 超简略版（横向，最小化）
     if (containerHeight > 0 && containerHeight < 120) {
       return (
-        <div ref={containerRef} className="w-full h-full p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl shadow-lg">
-          <div className="h-full flex items-center justify-between gap-2">
+        <div ref={containerRef} className={widgetStyles.containerClass} style={widgetStyles.containerStyle}>
+          <div className="h-full flex items-center justify-between gap-2 px-2">
             <span className="text-2xl leading-none" title={description}>{icon}</span>
             <div className="flex flex-col justify-center flex-1 min-w-0">
               <span className="text-xl font-bold text-gray-800 dark:text-white leading-none">
@@ -229,7 +266,7 @@ function Weather() {
     // 简略版（横向，中等信息）
     else if (containerHeight >= 120 && containerHeight < 200) {
       return (
-        <div ref={containerRef} className="w-full h-full p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl shadow-lg">
+        <div ref={containerRef} className={widgetStyles.containerClass} style={widgetStyles.containerStyle}>
           <div className="h-full flex items-center justify-between gap-4">
             {/* 左侧：图标和温度 */}
             <div className="flex items-center gap-4">
@@ -276,7 +313,7 @@ function Weather() {
     // 完整版（垂直，所有信息）- 包括初始状态和大尺寸布局
     else {
       return (
-      <div ref={containerRef} className="w-full h-full p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-2xl shadow-lg">
+      <div ref={containerRef} className={widgetStyles.containerClass} style={widgetStyles.containerStyle}>
         <div className="h-full flex flex-col justify-between">
           {/* 顶部：位置和刷新按钮 */}
           <div className="flex items-center justify-between mb-2">

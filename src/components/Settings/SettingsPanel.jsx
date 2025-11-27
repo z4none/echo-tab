@@ -1,17 +1,25 @@
-import { useState } from 'react';
-import { MdClose, MdDownload, MdUpload, MdColorLens, MdLocationOn, MdSearch } from 'react-icons/md';
+import { useState, useEffect } from 'react';
+import { MdClose, MdDownload, MdUpload } from 'react-icons/md';
 import useStore from '../../store/useStore';
-import { searchCity, getCurrentPosition } from '../../utils/weather';
+import { FONT_SOURCES } from '../../utils/fontLoader';
 
 const SettingsPanel = ({ isOpen, onClose }) => {
-  const { theme, setTheme, background, setBackground, widgets, updateWidget, gridConfig, setGridConfig, layout, updateLayout } = useStore();
+  const { theme, setTheme, background, setBackground, widgets, updateWidget, gridConfig, setGridConfig, layout, updateLayout, addNoteInstance, removeNoteInstance, fontSource, setFontSource, widgetStyles, setWidgetStyles } = useStore();
   const [activeTab, setActiveTab] = useState('appearance');
 
-  // 城市搜索状态
-  const [citySearchQuery, setCitySearchQuery] = useState('');
-  const [citySearchResults, setCitySearchResults] = useState([]);
-  const [citySearchLoading, setCitySearchLoading] = useState(false);
-  const [locationLoading, setLocationLoading] = useState(false);
+  // ESC 键关闭弹窗
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleExportConfig = () => {
     const config = {
@@ -68,72 +76,6 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     reader.readAsText(file);
   };
 
-  // 搜索城市
-  const handleCitySearch = async () => {
-    if (!citySearchQuery.trim()) {
-      setCitySearchResults([]);
-      return;
-    }
-
-    setCitySearchLoading(true);
-    try {
-      const results = await searchCity(citySearchQuery, 5);
-      setCitySearchResults(results);
-    } catch (error) {
-      console.error('搜索城市失败:', error);
-      alert('搜索城市失败: ' + error.message);
-      setCitySearchResults([]);
-    } finally {
-      setCitySearchLoading(false);
-    }
-  };
-
-  // 选择城市
-  const handleSelectCity = (city) => {
-    updateWidget('weather', {
-      location: {
-        latitude: city.latitude,
-        longitude: city.longitude,
-        name: city.name, // 只保存城市名称，不保存完整的 displayName
-        timezone: city.timezone,
-      },
-    });
-
-    // 添加到常用城市列表（如果不存在）
-    const savedCities = widgets.weather.savedCities || [];
-    if (!savedCities.find((c) => c.id === city.id)) {
-      updateWidget('weather', {
-        savedCities: [city, ...savedCities].slice(0, 5), // 最多保存5个
-      });
-    }
-
-    // 清空搜索
-    setCitySearchQuery('');
-    setCitySearchResults([]);
-  };
-
-  // 使用浏览器定位
-  const handleUseCurrentLocation = async () => {
-    setLocationLoading(true);
-    try {
-      const position = await getCurrentPosition();
-      updateWidget('weather', {
-        location: {
-          latitude: position.latitude,
-          longitude: position.longitude,
-          name: '当前位置',
-          timezone: 'auto',
-        },
-      });
-      alert('定位成功！');
-    } catch (error) {
-      console.error('获取位置失败:', error);
-      alert('获取位置失败: ' + error.message);
-    } finally {
-      setLocationLoading(false);
-    }
-  };
-
   // 处理 Widget 启用/禁用
   const handleToggleWidget = (widgetId, enabled) => {
     // 更新 widget 配置
@@ -149,6 +91,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
           weather: { x: 4, y: 2, w: 5, h: 3 },
           clock: { x: 4, y: 0, w: 4, h: 2 },
           search: { x: 4, y: 3, w: 5, h: 1 },
+          speeddial: { x: 0, y: 4, w: 6, h: 4 },
         };
 
         const defaultLayout = defaultLayouts[widgetId] || { x: 0, y: 0, w: 4, h: 4 };
@@ -332,16 +275,6 @@ const SettingsPanel = ({ isOpen, onClose }) => {
             }`}
           >
             外观
-          </button>
-          <button
-            onClick={() => setActiveTab('widgets')}
-            className={`flex-1 px-6 py-3 font-medium transition-colors ${
-              activeTab === 'widgets'
-                ? 'text-primary-500 border-b-2 border-primary-500'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-            }`}
-          >
-            组件
           </button>
           <button
             onClick={() => setActiveTab('layout')}
@@ -568,227 +501,137 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                   )}
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Widget 设置 */}
-          {activeTab === 'widgets' && (
-            <div className="space-y-6">
-              {/* 时钟设置 */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              {/* 字体源设置 */}
+              <div>
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
-                  时钟
+                  字体加载源
                 </h3>
-                <label className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    24小时制
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={widgets.clock.format24h}
-                    onChange={(e) =>
-                      updateWidget('clock', { format24h: e.target.checked })
-                    }
-                    className="w-5 h-5 text-primary-500 rounded focus:ring-primary-500"
-                  />
-                </label>
-              </div>
-
-              {/* 搜索框设置 */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
-                  搜索框
-                </h3>
-                <label className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    显示搜索框
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={widgets.search.enabled}
-                    onChange={(e) =>
-                      handleToggleWidget('search', e.target.checked)
-                    }
-                    className="w-5 h-5 text-primary-500 rounded focus:ring-primary-500"
-                  />
-                </label>
-              </div>
-
-              {/* 天气设置 */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
-                  天气
-                </h3>
-                <div className="space-y-4">
-                  {/* 显示天气 */}
-                  <label className="flex items-center justify-between">
-                    <span className="text-gray-700 dark:text-gray-300">
-                      显示天气
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={widgets.weather.enabled}
-                      onChange={(e) =>
-                        handleToggleWidget('weather', e.target.checked)
-                      }
-                      className="w-5 h-5 text-primary-500 rounded focus:ring-primary-500"
-                    />
-                  </label>
-
-                  {/* 当前位置 */}
-                  {widgets.weather.location?.name && (
-                    <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        当前位置
-                      </div>
-                      <div className="text-base font-medium text-gray-800 dark:text-white">
-                        {widgets.weather.location.name}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 浏览器定位 */}
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  选择 Google Fonts 字体的加载源。如果访问 Google 有困难，请使用国内镜像。
+                </p>
+                <div className="flex gap-3">
                   <button
-                    onClick={handleUseCurrentLocation}
-                    disabled={locationLoading}
-                    className="w-full px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    onClick={() => setFontSource('google')}
+                    className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                      fontSource === 'google'
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
                   >
-                    {locationLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>定位中...</span>
-                      </>
-                    ) : (
-                      <>
-                        <MdLocationOn size={20} />
-                        <span>使用当前位置</span>
-                      </>
-                    )}
+                    <div className="text-center">
+                      <div className="text-2xl mb-2">🌍</div>
+                      <div className="font-medium text-gray-800 dark:text-white mb-1">
+                        国际源
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        fonts.googleapis.com
+                      </div>
+                    </div>
                   </button>
-
-                  {/* 城市搜索 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      搜索城市
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={citySearchQuery}
-                        onChange={(e) => setCitySearchQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleCitySearch()}
-                        placeholder="输入城市名称，如：北京、上海"
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                      <button
-                        onClick={handleCitySearch}
-                        disabled={citySearchLoading}
-                        className="px-4 py-2 bg-gray-700 dark:bg-gray-600 text-white rounded-lg hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                      >
-                        {citySearchLoading ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        ) : (
-                          <MdSearch size={20} />
-                        )}
-                      </button>
-                    </div>
-
-                    {/* 搜索结果 */}
-                    {citySearchResults.length > 0 && (
-                      <div className="mt-2 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                        {citySearchResults.map((city) => (
-                          <button
-                            key={city.id}
-                            onClick={() => handleSelectCity(city)}
-                            className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b last:border-b-0 border-gray-200 dark:border-gray-600"
-                          >
-                            <div className="text-sm font-medium text-gray-800 dark:text-white">
-                              {city.displayName}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {city.latitude.toFixed(2)}, {city.longitude.toFixed(2)}
-                            </div>
-                          </button>
-                        ))}
+                  <button
+                    onClick={() => setFontSource('china')}
+                    className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                      fontSource === 'china'
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl mb-2">🇨🇳</div>
+                      <div className="font-medium text-gray-800 dark:text-white mb-1">
+                        国内镜像
                       </div>
-                    )}
-                  </div>
-
-                  {/* 常用城市 */}
-                  {widgets.weather.savedCities && widgets.weather.savedCities.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        常用城市
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {widgets.weather.savedCities.map((city) => (
-                          <button
-                            key={city.id}
-                            onClick={() => handleSelectCity(city)}
-                            className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                          >
-                            {city.name}
-                          </button>
-                        ))}
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        fonts.googleapis.cn
                       </div>
                     </div>
-                  )}
-
-                  {/* 温度单位 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      温度单位
-                    </label>
-                    <div className="flex gap-3">
-                      <label className="flex-1 flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer transition-all hover:border-primary-400">
-                        <input
-                          type="radio"
-                          name="unit"
-                          value="celsius"
-                          checked={widgets.weather.unit === 'celsius'}
-                          onChange={(e) =>
-                            updateWidget('weather', { unit: e.target.value })
-                          }
-                          className="mr-2"
-                        />
-                        <span className="text-gray-700 dark:text-gray-300">摄氏度 (°C)</span>
-                      </label>
-                      <label className="flex-1 flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer transition-all hover:border-primary-400">
-                        <input
-                          type="radio"
-                          name="unit"
-                          value="fahrenheit"
-                          checked={widgets.weather.unit === 'fahrenheit'}
-                          onChange={(e) =>
-                            updateWidget('weather', { unit: e.target.value })
-                          }
-                          className="mr-2"
-                        />
-                        <span className="text-gray-700 dark:text-gray-300">华氏度 (°F)</span>
-                      </label>
-                    </div>
-                  </div>
+                  </button>
                 </div>
               </div>
 
-              {/* 待办事项设置 */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              {/* Widget 背景配置 */}
+              <div>
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
-                  待办事项
+                  组件背景
                 </h3>
-                <label className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    显示待办事项
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={widgets.todo?.enabled || false}
-                    onChange={(e) =>
-                      handleToggleWidget('todo', e.target.checked)
-                    }
-                    className="w-5 h-5 text-primary-500 rounded focus:ring-primary-500"
-                  />
-                </label>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  自定义所有组件的统一背景颜色和透明度
+                </p>
+
+                {/* 浅色模式背景 */}
+                <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        浅色模式背景
+                      </label>
+                      <input
+                        type="color"
+                        value={widgetStyles.background.color}
+                        onChange={(e) => setWidgetStyles({
+                          background: { ...widgetStyles.background, color: e.target.value }
+                        })}
+                        className="w-10 h-10 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={widgetStyles.background.color}
+                      onChange={(e) => setWidgetStyles({
+                        background: { ...widgetStyles.background, color: e.target.value }
+                      })}
+                      placeholder="#ffffff"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  {/* 深色模式背景 */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        深色模式背景
+                      </label>
+                      <input
+                        type="color"
+                        value={widgetStyles.background.colorDark}
+                        onChange={(e) => setWidgetStyles({
+                          background: { ...widgetStyles.background, colorDark: e.target.value }
+                        })}
+                        className="w-10 h-10 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={widgetStyles.background.colorDark}
+                      onChange={(e) => setWidgetStyles({
+                        background: { ...widgetStyles.background, colorDark: e.target.value }
+                        })}
+                      placeholder="#1f2937"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  {/* 透明度 */}
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        背景透明度
+                      </label>
+                      <span className="text-sm text-gray-500">{widgetStyles.background.opacity}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={widgetStyles.background.opacity}
+                      onChange={(e) => setWidgetStyles({
+                        background: { ...widgetStyles.background, opacity: parseInt(e.target.value) }
+                      })}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -848,7 +691,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                     </div>
                     <input
                       type="range"
-                      min="64"
+                      min="32"
                       max="128"
                       step="8"
                       value={gridConfig.cellSize}

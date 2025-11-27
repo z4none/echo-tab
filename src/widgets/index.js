@@ -18,6 +18,7 @@ const clockManifest = {
   maxSize: { w: 8, h: 4 },
   tags: ['时间', '工具', '实用'],
   category: 'productivity',
+  defaultBackground: false, // 时钟默认透明，不遮挡背景
 };
 
 const weatherManifest = {
@@ -33,6 +34,7 @@ const weatherManifest = {
   maxSize: { w: 8, h: 6 },
   tags: ['天气', '实用', '信息'],
   category: 'information',
+  defaultBackground: true, // 天气需要背景显示信息
 };
 
 const searchManifest = {
@@ -48,6 +50,7 @@ const searchManifest = {
   maxSize: { w: 10, h: 2 },
   tags: ['搜索', '工具', '实用'],
   category: 'productivity',
+  defaultBackground: false, // 搜索框自带背景，外层透明
 };
 
 const todoManifest = {
@@ -63,6 +66,55 @@ const todoManifest = {
   maxSize: { w: 6, h: 8 },
   tags: ['待办', '任务', '生产力'],
   category: 'productivity',
+  defaultBackground: true, // 待办事项需要背景
+};
+
+const noteManifest = {
+  id: 'note',
+  name: '笔记',
+  description: '支持 Markdown 的笔记 Widget，可创建多个笔记实例',
+  version: '1.0.0',
+  author: 'EchoTab',
+  type: 'builtin',
+  icon: '📝',
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
+  maxSize: { w: 8, h: 8 },
+  tags: ['笔记', 'Markdown', '生产力'],
+  category: 'productivity',
+  defaultBackground: true, // 笔记需要背景
+};
+
+const speedDialManifest = {
+  id: 'speeddial',
+  name: 'SpeedDial',
+  description: '键盘快捷访问，26个字母键快速跳转到常用网站',
+  version: '1.0.0',
+  author: 'EchoTab',
+  type: 'builtin',
+  icon: '⌨️',
+  defaultSize: { w: 6, h: 4 },
+  minSize: { w: 5, h: 3 },
+  maxSize: { w: 10, h: 6 },
+  tags: ['快捷键', '键盘', '导航', '效率'],
+  category: 'productivity',
+  defaultBackground: true, // SpeedDial 需要背景显示键盘布局
+};
+
+const quoteManifest = {
+  id: 'quote',
+  name: '每日一言',
+  description: '随机显示名人名言、影视经典句子，给你启发和灵感',
+  version: '1.0.0',
+  author: 'EchoTab',
+  type: 'builtin',
+  icon: '💬',
+  defaultSize: { w: 5, h: 3 },
+  minSize: { w: 4, h: 2 },
+  maxSize: { w: 8, h: 6 },
+  tags: ['名言', '灵感', '文字'],
+  category: 'information',
+  defaultBackground: true, // Quote 需要背景突出文字
 };
 
 // 注册内置 Widgets
@@ -91,6 +143,24 @@ widgetRegistry.register(
   'todo',
   todoManifest,
   () => import('./builtin/todo')
+);
+
+widgetRegistry.register(
+  'note',
+  noteManifest,
+  () => import('./builtin/note')
+);
+
+widgetRegistry.register(
+  'speeddial',
+  speedDialManifest,
+  () => import('./builtin/speeddial')
+);
+
+widgetRegistry.register(
+  'quote',
+  quoteManifest,
+  () => import('./builtin/quote')
 );
 
 console.log('[Widgets] 所有 Widgets 已注册:', widgetRegistry.getAll().map(w => w.id));

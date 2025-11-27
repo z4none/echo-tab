@@ -9,7 +9,7 @@ import { findOverlappingItems, findNearestEmptyPosition } from '../../utils/grid
  * GridLayout - Android 风格的网格布局容器
  * 管理所有 widgets 和 shortcuts 的位置
  */
-const GridLayout = ({ onEditShortcut, onDeleteShortcut }) => {
+const GridLayout = ({ onEditShortcut, onDeleteShortcut, onConfigWidget }) => {
   const {
     layout,
     gridConfig,
@@ -17,6 +17,8 @@ const GridLayout = ({ onEditShortcut, onDeleteShortcut }) => {
     updateLayout,
     shortcuts,
     widgets,
+    widgetInstances,
+    removeWidgetInstance,
   } = useStore();
 
   // 预览布局（拖动时显示）
@@ -228,26 +230,73 @@ const GridLayout = ({ onEditShortcut, onDeleteShortcut }) => {
     setOriginalLayout(null);
   };
 
+  // 处理配置 Widget
+  const handleConfigWidget = (widgetId) => {
+    if (onConfigWidget) {
+      onConfigWidget(widgetId);
+    }
+  };
+
+  // 处理删除 Widget
+  const handleDeleteWidget = (widgetId) => {
+    if (confirm('确定要删除这个 Widget 吗？')) {
+      // 从新架构删除
+      if (widgetInstances.find(inst => inst.id === widgetId)) {
+        removeWidgetInstance(widgetId);
+      }
+      // 如果是旧架构的 note 或其他实例，调用相应的删除方法
+      else if (widgetId.startsWith('note-')) {
+        const { removeNoteInstance } = useStore.getState();
+        removeNoteInstance(widgetId);
+      }
+    }
+  };
+
   // 渲染单个网格项
   const renderGridItem = (layoutItem) => {
     const { id, x, y, w, h } = layoutItem;
 
     let content = null;
     let needsCentering = false; // 标记是否需要额外的居中包装器
+    let showConfigButton = false; // 是否显示配置按钮
 
-    // 检查是否是 Widget (clock, weather, search 等)
-    if (widgets[id] !== undefined) {
+    // 先检查是否是新架构的 widget 实例
+    const widgetInstance = widgetInstances.find((inst) => inst.id === id);
+
+    if (widgetInstance) {
+      // 新架构：从 widgetInstances 渲染
+      content = <DynamicWidget widgetId={id} />;
+      needsCentering = false;
+      showConfigButton = true; // 新架构的 widget 显示配置按钮
+
+      // Search 需要居中包装器
+      if (widgetInstance.type === 'search') {
+        needsCentering = true;
+      }
+    }
+    // 检查是否是 Widget (clock, weather, search 等) - 旧架构
+    else if (widgets[id] !== undefined) {
       // 检查 Widget 是否启用
       if (!widgets[id].enabled) return null;
 
       // 使用 DynamicWidget 动态加载
       content = <DynamicWidget widgetId={id} />;
       needsCentering = false; // 所有 Widget 都应该是 w-full h-full
+      showConfigButton = false; // 旧架构的 widget 在设置面板配置
 
       // Search 需要居中包装器
       if (id === 'search') {
         needsCentering = true;
       }
+    } else if (id.startsWith('note-')) {
+      // 笔记实例 (多实例 Widget) - 旧架构
+      // 检查笔记功能是否启用
+      if (!widgets.notes?.enabled) return null;
+
+      // 使用 DynamicWidget 动态加载，DynamicWidget 会自动提取类型并传递 instanceId
+      content = <DynamicWidget widgetId={id} />;
+      needsCentering = false;
+      showConfigButton = true; // 笔记显示配置按钮
     } else if (id.startsWith('shortcut-')) {
       const shortcutId = parseInt(id.replace('shortcut-', ''));
       const shortcut = shortcuts.find((s) => s.id === shortcutId);
@@ -292,6 +341,8 @@ const GridLayout = ({ onEditShortcut, onDeleteShortcut }) => {
         onResizeEnd={handleResizeEnd}
         isDragging={draggingItemId === id}
         isResizing={resizingItemId === id}
+        onConfig={showConfigButton ? handleConfigWidget : null}
+        onDelete={showConfigButton ? handleDeleteWidget : null}
       >
         {wrappedContent}
       </GridItem>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { MdSettings, MdClose } from 'react-icons/md';
 
 /**
  * GridItem - 网格布局中的单个项
@@ -20,6 +21,8 @@ const GridItem = ({
   onResizeEnd,
   isDragging,
   isResizing,
+  onConfig, // 配置按钮回调
+  onDelete, // 删除按钮回调
   children,
 }) => {
   const [dragStart, setDragStart] = useState(null);
@@ -227,9 +230,54 @@ const GridItem = ({
       ref={itemRef}
       style={style}
       onMouseDown={handleMouseDown}
-      className="grid-item relative"
+      className="grid-item relative group"
     >
       {children}
+
+      {/* Config and Delete Buttons - hover 时显示 */}
+      {isEditMode && (
+        <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-2">
+          {onConfig && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+
+                // 检查 widget 是否有自己的配置界面
+                const widgetContainer = itemRef.current?.querySelector('[data-has-own-config="true"]');
+                if (widgetContainer) {
+                  // 如果 widget 有自己的配置界面，触发它的编辑按钮
+                  const editBtn = widgetContainer.querySelector('.speeddial-edit-btn, [data-widget-edit-btn]');
+                  if (editBtn) {
+                    editBtn.click();
+                    return;
+                  }
+                }
+
+                // 否则打开配置侧栏
+                onConfig(id);
+              }}
+              onMouseDown={(e) => e.stopPropagation()} // 防止触发拖动
+              className="p-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors shadow-md"
+              title="配置"
+            >
+              <MdSettings size={18} />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(id);
+              }}
+              onMouseDown={(e) => e.stopPropagation()} // 防止触发拖动
+              className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-md"
+              title="删除"
+            >
+              <MdClose size={18} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Resize Handle - 右下角 */}
       {isEditMode && (
