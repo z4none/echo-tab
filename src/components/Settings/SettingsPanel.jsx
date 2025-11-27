@@ -1,11 +1,23 @@
 import { useState, useEffect } from 'react';
-import { MdClose, MdDownload, MdUpload } from 'react-icons/md';
+import { MdClose, MdDownload, MdUpload, MdDeleteSweep } from 'react-icons/md';
 import useStore from '../../store/useStore';
 import { FONT_SOURCES } from '../../utils/fontLoader';
+import { cacheWallpaper, getCachedWallpaper, cleanExpiredCache, getCacheStats, clearAllCache } from '../../utils/wallpaperCache';
 
 const SettingsPanel = ({ isOpen, onClose }) => {
   const { theme, setTheme, background, setBackground, widgets, updateWidget, gridConfig, setGridConfig, layout, updateLayout, addNoteInstance, removeNoteInstance, fontSource, setFontSource, widgetStyles, setWidgetStyles } = useStore();
   const [activeTab, setActiveTab] = useState('appearance');
+  const [cacheStats, setCacheStats] = useState({ count: 0, totalSizeMB: '0.00' });
+  const [isLoadingWallpaper, setIsLoadingWallpaper] = useState(false);
+
+  // 加载缓存统计信息
+  useEffect(() => {
+    if (isOpen) {
+      updateCacheStats();
+      // 自动清理过期缓存
+      cleanExpiredCache();
+    }
+  }, [isOpen]);
 
   // ESC 键关闭弹窗
   useEffect(() => {
@@ -20,6 +32,12 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  // 更新缓存统计
+  const updateCacheStats = async () => {
+    const stats = await getCacheStats();
+    setCacheStats(stats);
+  };
 
   const handleExportConfig = () => {
     const config = {
@@ -179,6 +197,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
   };
 
   const handleRandomWallpaper = async (category = 'general') => {
+    setIsLoadingWallpaper(true);
     try {
       let imageUrl;
 
@@ -193,13 +212,43 @@ const SettingsPanel = ({ isOpen, onClose }) => {
         imageUrl = `https://picsum.photos/id/${randomId}/1920/1080`;
       }
 
+      // 先检查缓存
+      let cachedUrl = await getCachedWallpaper(imageUrl);
+
+      if (!cachedUrl) {
+        // 如果没有缓存，下载并缓存图片
+        cachedUrl = await cacheWallpaper(imageUrl, category);
+      }
+
       setBackground({
         ...background,
         type: 'unsplash',
-        value: imageUrl,
+        value: cachedUrl, // 使用缓存的 Data URL
       });
+
+      // 更新缓存统计
+      await updateCacheStats();
     } catch (error) {
+      console.error('[SettingsPanel] 获取壁纸失败:', error);
       alert('获取图片失败，请稍后重试！');
+    } finally {
+      setIsLoadingWallpaper(false);
+    }
+  };
+
+  // 清空壁纸缓存
+  const handleClearWallpaperCache = async () => {
+    if (!confirm('确定要清空所有壁纸缓存吗？这将删除所有已下载的壁纸。')) {
+      return;
+    }
+
+    try {
+      await clearAllCache();
+      await updateCacheStats();
+      alert('壁纸缓存已清空！');
+    } catch (error) {
+      console.error('[SettingsPanel] 清空缓存失败:', error);
+      alert('清空缓存失败，请稍后重试！');
     }
   };
 
@@ -412,17 +461,41 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => handleRandomWallpaper('general')}
-                      className="px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
+                      disabled={isLoadingWallpaper}
+                      className="px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      随机图片
+                      {isLoadingWallpaper ? '加载中...' : '随机图片'}
                     </button>
                     <button
                       onClick={() => handleRandomWallpaper('anime')}
-                      className="px-4 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors font-medium"
+                      disabled={isLoadingWallpaper}
+                      className="px-4 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      动漫壁纸
+                      {isLoadingWallpaper ? '加载中...' : '动漫壁纸'}
                     </button>
                   </div>
+
+                  {/* 缓存信息 */}
+                  {cacheStats.count > 0 && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-gray-700 dark:text-gray-300">
+                          <span className="font-medium">壁纸缓存：</span>
+                          {cacheStats.count} 张图片 ({cacheStats.totalSizeMB} MB)
+                        </div>
+                        <button
+                          onClick={handleClearWallpaperCache}
+                          className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                          title="清空缓存"
+                        >
+                          <MdDeleteSweep size={18} />
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        缓存壁纸可加快下次加载速度，7天后自动过期
+                      </p>
+                    </div>
+                  )}
 
                   {(background.type === 'image' || background.type === 'unsplash') && (
                     <>

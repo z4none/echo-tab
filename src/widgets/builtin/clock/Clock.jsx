@@ -27,6 +27,10 @@ const Clock = ({ instanceId, config, manifest }) => {
       weight: 700,
       timeSize: 64,
       dateSize: 20
+    },
+    colors: {
+      time: null, // null 表示使用默认颜色
+      date: null
     }
   };
 
@@ -39,6 +43,10 @@ const Clock = ({ instanceId, config, manifest }) => {
       weight: 700,
       timeSize: 64,
       dateSize: 20
+    },
+    colors = {
+      time: null,
+      date: null
     }
   } = widgetConfig;
 
@@ -74,7 +82,8 @@ const Clock = ({ instanceId, config, manifest }) => {
     fontFamily: font.family || 'system-ui, -apple-system, sans-serif',
     fontWeight: font.weight || 700,
     fontSize: `${font.timeSize || 64}px`,
-    textShadow: '0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)'
+    textShadow: '0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)',
+    ...(colors.time && { color: colors.time }) // 如果设置了自定义颜色，覆盖默认颜色
   };
 
   // 日期样式（使用相同字体，但可以稍细一些）
@@ -82,7 +91,8 @@ const Clock = ({ instanceId, config, manifest }) => {
     fontFamily: font.family || 'system-ui, -apple-system, sans-serif',
     fontWeight: Math.max(300, (font.weight || 700) - 200), // 日期字重比时间轻一些
     fontSize: `${font.dateSize || 20}px`,
-    textShadow: '0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)'
+    textShadow: '0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)',
+    ...(colors.date && { color: colors.date }) // 如果设置了自定义颜色，覆盖默认颜色
   };
 
   // 获取背景样式配置（从 config 或 manifest）
@@ -98,14 +108,14 @@ const Clock = ({ instanceId, config, manifest }) => {
           </div>
         )}
         <div
-          className={`text-gray-800 dark:text-white ${showDate ? 'mb-2' : ''}`}
+          className={`${!colors.time ? 'text-gray-800 dark:text-white' : ''} ${showDate ? 'mb-2' : ''}`}
           style={timeStyle}
         >
           {format(currentTime, timeFormat)}
         </div>
         {showDate && (
           <div
-            className="text-gray-600 dark:text-gray-300"
+            className={!colors.date ? 'text-gray-600 dark:text-gray-300' : ''}
             style={dateStyle}
           >
             {format(currentTime, dateFormat, { locale: zhCN })}

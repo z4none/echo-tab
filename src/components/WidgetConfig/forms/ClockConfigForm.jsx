@@ -128,6 +128,81 @@ export default function ClockConfigForm({ config, updateConfig }) {
         </>
       )}
 
+      {/* 颜色设置 */}
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+        <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-4">
+          颜色设置
+        </h3>
+
+        {/* 时间颜色 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            时间颜色
+          </label>
+          <div className="flex gap-3 items-center">
+            <input
+              type="color"
+              value={config.colors?.time || '#1f2937'}
+              onChange={(e) => updateConfig('colors.time', e.target.value)}
+              className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+            />
+            <input
+              type="text"
+              value={config.colors?.time || ''}
+              onChange={(e) => updateConfig('colors.time', e.target.value)}
+              placeholder="留空使用默认颜色"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            {config.colors?.time && (
+              <button
+                onClick={() => updateConfig('colors.time', null)}
+                className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+              >
+                重置
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            留空使用自动适配的默认颜色（浅色/暗色模式）
+          </p>
+        </div>
+
+        {/* 日期颜色 */}
+        {config.showDate !== false && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              日期颜色
+            </label>
+            <div className="flex gap-3 items-center">
+              <input
+                type="color"
+                value={config.colors?.date || '#4b5563'}
+                onChange={(e) => updateConfig('colors.date', e.target.value)}
+                className="w-12 h-12 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600"
+              />
+              <input
+                type="text"
+                value={config.colors?.date || ''}
+                onChange={(e) => updateConfig('colors.date', e.target.value)}
+                placeholder="留空使用默认颜色"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              {config.colors?.date && (
+                <button
+                  onClick={() => updateConfig('colors.date', null)}
+                  className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                >
+                  重置
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              留空使用自动适配的默认颜色（浅色/暗色模式）
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* 字体设置 */}
       <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
         <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-4">
