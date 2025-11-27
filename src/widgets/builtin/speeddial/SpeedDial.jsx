@@ -224,19 +224,15 @@ function SpeedDial({ instanceId, config, manifest }) {
           rounded-lg
           transition-all duration-150 ease-out
           ${hasBinding
-            ? `bg-primary-500/20 dark:bg-primary-500/30 border border-primary-500/40 cursor-pointer hover:bg-primary-500/30 dark:hover:bg-primary-500/40`
+            ? 'bg-sky-400 dark:bg-sky-500 text-white cursor-pointer'
             : `bg-gray-100 dark:bg-gray-700 ${isEditing ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600' : ''}`
           }
           ${isCurrentlyEditing ? 'ring-2 ring-primary-500' : ''}
-          ${isPressed ? 'scale-110 !brightness-125' : ''}
+          ${isPressed ? 'scale-110' : ''}
         `}
         style={{
           width: `${keySize}px`,
           height: `${keySize}px`,
-          boxShadow: isPressed
-            ? '0 0 20px rgba(14, 165, 233, 0.8), 0 0 40px rgba(14, 165, 233, 0.5), 0 8px 16px rgba(0, 0, 0, 0.3)'
-            : 'none',
-          transform: isPressed ? 'translateY(-2px)' : 'translateY(0)',
         }}
         onClick={() => {
           if (isEditing) {
@@ -248,7 +244,9 @@ function SpeedDial({ instanceId, config, manifest }) {
       >
         {/* 字母 */}
         <div
-          className={`font-bold ${hasBinding ? 'text-primary-600 dark:text-primary-400' : widgetStyles.textPrimary}`}
+          className={`font-bold ${
+            hasBinding ? 'text-white' : widgetStyles.textPrimary
+          }`}
           style={{ fontSize: `${Math.max(12, keySize * 0.35)}px` }}
         >
           {key}
@@ -257,7 +255,7 @@ function SpeedDial({ instanceId, config, manifest }) {
         {/* 已绑定的域名 */}
         {hasBinding && !isEditing && (
           <div
-            className="text-primary-600/70 dark:text-primary-400/70 truncate max-w-full px-1"
+            className="text-white/90 truncate max-w-full px-1"
             style={{ fontSize: `${Math.max(8, keySize * 0.2)}px` }}
           >
             {getDomain(bindings[lowerKey])}

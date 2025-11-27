@@ -88,15 +88,15 @@ const Quote = ({ instanceId, config, manifest }) => {
           `}
           title="换一句"
         >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-      </button>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
 
         {/* 名言内容 */}
-        <div className="flex flex-col items-center text-center max-w-2xl px-6">
+        <div className={`flex flex-col items-center text-center max-w-2xl px-6`}>
           {/* 引号装饰 */}
-          <svg className="w-8 h-8 text-primary-400 dark:text-primary-500 mb-4 opacity-50" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 text-gray-500 dark:text-gray-200 mb-4 opacity-50" fill="currentColor" viewBox="0 0 24 24">
             <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
           </svg>
 
