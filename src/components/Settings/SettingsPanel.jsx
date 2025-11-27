@@ -5,7 +5,7 @@ import { FONT_SOURCES } from '../../utils/fontLoader';
 import { cacheWallpaper, getCachedWallpaper, cleanExpiredCache, getCacheStats, clearAllCache } from '../../utils/wallpaperCache';
 
 const SettingsPanel = ({ isOpen, onClose }) => {
-  const { theme, setTheme, background, setBackground, widgets, updateWidget, gridConfig, setGridConfig, layout, updateLayout, addNoteInstance, removeNoteInstance, fontSource, setFontSource, widgetStyles, setWidgetStyles } = useStore();
+  const { theme, setTheme, background, setBackground, gridConfig, setGridConfig, fontSource, setFontSource, widgetStyles, setWidgetStyles } = useStore();
   const [activeTab, setActiveTab] = useState('appearance');
   const [cacheStats, setCacheStats] = useState({ count: 0, totalSizeMB: '0.00' });
   const [isLoadingWallpaper, setIsLoadingWallpaper] = useState(false);
@@ -40,13 +40,14 @@ const SettingsPanel = ({ isOpen, onClose }) => {
   };
 
   const handleExportConfig = () => {
+    const store = useStore.getState();
     const config = {
       theme,
       background,
-      widgets,
       gridConfig,
-      shortcuts: useStore.getState().shortcuts,
-      layout: useStore.getState().layout,
+      widgetInstances: store.widgetInstances,
+      shortcuts: store.shortcuts,
+      layout: store.layout,
     };
 
     const blob = new Blob([JSON.stringify(config, null, 2)], {
@@ -68,29 +69,16 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     reader.onload = (event) => {
       try {
         const config = JSON.parse(event.target.result);
-        const store = useStore.getState();
 
-        // 1. 更新主题和背景
-        if (config.theme) store.setTheme(config.theme);
-        if (config.background) store.setBackground(config.background);
-        if (config.gridConfig) store.setGridConfig(config.gridConfig);
-
-        // 2. 更新 widgets 配置
-        if (config.widgets) {
-          Object.entries(config.widgets).forEach(([key, value]) => {
-            store.updateWidget(key, value);
-          });
-        }
-
-        // 3. 先导入快捷方式（直接使用 setState 替换，不使用 addShortcut 避免生成新 ID）
-        if (config.shortcuts) {
-          useStore.setState({ shortcuts: config.shortcuts });
-        }
-
-        // 4. 最后导入布局（这样可以确保所有 widget 和 shortcut 都已经存在）
-        if (config.layout) {
-          store.setLayout(config.layout);
-        }
+        // 直接批量更新所有状态
+        useStore.setState({
+          theme: config.theme || useStore.getState().theme,
+          background: config.background || useStore.getState().background,
+          gridConfig: config.gridConfig || useStore.getState().gridConfig,
+          widgetInstances: config.widgetInstances || [],
+          shortcuts: config.shortcuts || [],
+          layout: config.layout || [],
+        });
 
         alert('配置导入成功！');
         onClose();

@@ -373,7 +373,35 @@ const useStore = create(
     {
       name: 'echo-tab-storage',
       version: 1,
+      partializeState: (state) => ({
+        // 排除 isEditMode，不持久化到 localStorage
+        // 每次刷新页面都会重置为 false
+        theme: state.theme,
+        fontSource: state.fontSource,
+        shortcuts: state.shortcuts,
+        widgets: state.widgets,
+        widgetInstances: state.widgetInstances,
+        background: state.background,
+        gridConfig: state.gridConfig,
+        layout: state.layout,
+        widgetStyles: state.widgetStyles,
+      }),
+      // 合并策略：从 localStorage 恢复数据时，确保 isEditMode 始终为 false
+      merge: (persistedState, currentState) => {
+        // 删除持久化状态中的 isEditMode（如果存在）
+        const { isEditMode, ...restPersistedState } = persistedState;
+        // 合并，但保持 isEditMode 为初始值 false
+        return {
+          ...currentState,
+          ...restPersistedState,
+          isEditMode: false, // 强制重置为 false
+        };
+      },
       migrate: (persistedState, version) => {
+        // 删除旧的 isEditMode（如果存在）
+        // 确保每次刷新都是预览模式
+        delete persistedState.isEditMode;
+
         // 迁移旧的天气配置格式
         if (persistedState.widgets?.weather) {
           const weather = persistedState.widgets.weather;

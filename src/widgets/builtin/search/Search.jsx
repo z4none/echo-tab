@@ -80,8 +80,10 @@ const Search = ({ instanceId, config, manifest }) => {
   const [query, setQuery] = useState('');
   const [showEngineMenu, setShowEngineMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [isFocused, setIsFocused] = useState(false);
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
+  const inputRef = useRef(null);
 
   // 优先使用传入的 config，否则使用旧架构的配置（兼容性）
   const searchConfig = config || widgets.search || { engine: 'google' };
@@ -92,14 +94,21 @@ const Search = ({ instanceId, config, manifest }) => {
   const isDark = theme === 'dark';
   const inputClassName = `
     w-full
-    py-2.5 pl-12 pr-12 text-base
-    ${isDark ? 'bg-gray-800 text-gray-100 placeholder-gray-500 border-gray-700' : 'bg-white text-gray-900 placeholder-gray-400 border-gray-200'}
-    border
+    py-3 pl-12 pr-12 text-base
+    ${isDark ? 'bg-gray-800 text-gray-100 placeholder-gray-500' : 'bg-white text-gray-900 placeholder-gray-400'}
+    border-2
+    ${isFocused
+      ? isDark
+        ? 'border-primary-500 shadow-lg shadow-primary-500/20'
+        : 'border-primary-400 shadow-lg shadow-primary-400/20'
+      : isDark
+        ? 'border-gray-700 shadow-md'
+        : 'border-gray-200 shadow-md'
+    }
     rounded-2xl
-    focus:outline-none ${isDark ? 'focus:border-primary-500' : 'focus:border-primary-400'}
-    ${isDark ? 'hover:border-gray-600' : 'hover:border-gray-300'}
-    transition-all duration-200 ease-in-out
-    shadow-sm hover:shadow-md focus:shadow-lg
+    focus:outline-none
+    ${!isFocused && (isDark ? 'hover:border-gray-600 hover:shadow-lg' : 'hover:border-gray-300 hover:shadow-lg')}
+    transition-all duration-300 ease-out
   `.trim().replace(/\s+/g, ' ');
 
   const handleSearch = (e) => {
@@ -109,6 +118,14 @@ const Search = ({ instanceId, config, manifest }) => {
     const searchUrl = SEARCH_ENGINES[currentEngine].url + encodeURIComponent(query);
     window.open(searchUrl, '_blank');
     setQuery('');
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
   };
 
   const handleEngineChange = (engine) => {
@@ -145,6 +162,41 @@ const Search = ({ instanceId, config, manifest }) => {
     }
   }, [showEngineMenu]);
 
+  // 全局键盘快捷键：空格聚焦搜索框，ESC 失焦
+  useEffect(() => {
+    const handleGlobalKeydown = (e) => {
+      // 检查当前是否有元素获得焦点（输入框、文本域等）
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement &&
+        (activeElement.tagName === 'INPUT' ||
+         activeElement.tagName === 'TEXTAREA' ||
+         activeElement.isContentEditable);
+
+      // 空格键：聚焦搜索框（仅当没有输入框获得焦点时）
+      if (e.key === ' ' && !isInputFocused && inputRef.current) {
+        e.preventDefault(); // 防止页面滚动
+        inputRef.current.focus();
+        setShowEngineMenu(false); // 关闭引擎菜单（如果打开）
+      }
+
+      // ESC 键：失焦搜索框或关闭引擎菜单
+      if (e.key === 'Escape') {
+        if (showEngineMenu) {
+          // 如果引擎菜单打开，先关闭菜单
+          setShowEngineMenu(false);
+        } else if (inputRef.current === activeElement) {
+          // 如果搜索框有焦点，失焦并清空
+          inputRef.current.blur();
+          setQuery('');
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeydown);
+    return () => document.removeEventListener('keydown', handleGlobalKeydown);
+  }, [showEngineMenu]); // 依赖 showEngineMenu 以正确处理菜单状态
+
   return (
     <>
       <div className={widgetStyles.containerClass} style={widgetStyles.containerStyle}>
@@ -153,12 +205,28 @@ const Search = ({ instanceId, config, manifest }) => {
             onSubmit={handleSearch}
             className="relative w-full max-w-2xl"
           >
-            {/* 搜索输入框容器 */}
-            <div className="relative flex items-center group">
+            {/* 搜索输入框容器 - 添加缩放和光晕效果 */}
+            <div
+              className={`
+                relative flex items-center group
+                transition-all duration-300 ease-out
+                ${isFocused ? 'scale-105' : 'scale-100'}
+              `}
+              style={{
+                filter: isFocused
+                  ? isDark
+                    ? 'drop-shadow(0 0 20px rgba(99, 102, 241, 0.4)) drop-shadow(0 0 40px rgba(99, 102, 241, 0.2))'
+                    : 'drop-shadow(0 0 20px rgba(99, 102, 241, 0.3)) drop-shadow(0 0 40px rgba(99, 102, 241, 0.15))'
+                  : 'none',
+              }}
+            >
               <input
+                ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
                 placeholder={SEARCH_ENGINES[currentEngine].placeholder}
                 className={inputClassName}
               />
