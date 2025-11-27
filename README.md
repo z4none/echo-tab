@@ -44,6 +44,28 @@ npm run dev
 npm run build
 ```
 
+## 部署到 Vercel
+
+### 一键部署
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/echo-tab)
+
+### 手动部署
+
+1. Fork 本仓库到你的 GitHub 账号
+2. 登录 [Vercel](https://vercel.com)
+3. 点击 "Add New Project"
+4. 导入你 fork 的仓库
+5. Vercel 会自动检测到 Vite 项目并配置构建设置
+6. 点击 "Deploy" 开始部署
+
+**构建配置**（通常自动检测）：
+- Framework Preset: `Vite`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+
+部署完成后，你可以将其设置为浏览器的起始页。
+
 ## 技术栈
 
 - React 19 + Vite
