@@ -178,12 +178,20 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     reader.readAsDataURL(file);
   };
 
-  const handleUnsplashDaily = async () => {
+  const handleRandomWallpaper = async (category = 'general') => {
     try {
-      // 生成 0-1000 之间的随机 ID
-      const randomId = Math.floor(Math.random() * 1000);
-      // 使用固定 ID 的 URL 格式，确保刷新页面后图片不变
-      const imageUrl = `https://picsum.photos/id/${randomId}/1920/1080`;
+      let imageUrl;
+
+      if (category === 'anime') {
+        // 动漫壁纸 API
+        const response = await fetch('https://www.loliapi.com/acg/pc?type=json');
+        const data = await response.json();
+        imageUrl = data.url;
+      } else {
+        // 通用随机图片
+        const randomId = Math.floor(Math.random() * 1000);
+        imageUrl = `https://picsum.photos/id/${randomId}/1920/1080`;
+      }
 
       setBackground({
         ...background,
@@ -400,11 +408,19 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                         className="hidden"
                       />
                     </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={handleUnsplashDaily}
-                      className="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
+                      onClick={() => handleRandomWallpaper('general')}
+                      className="px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
                     >
                       随机图片
+                    </button>
+                    <button
+                      onClick={() => handleRandomWallpaper('anime')}
+                      className="px-4 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors font-medium"
+                    >
+                      动漫壁纸
                     </button>
                   </div>
 
