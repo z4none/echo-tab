@@ -70,24 +70,32 @@ const SettingsPanel = ({ isOpen, onClose }) => {
         const config = JSON.parse(event.target.result);
         const store = useStore.getState();
 
+        // 1. 更新主题和背景
         if (config.theme) store.setTheme(config.theme);
         if (config.background) store.setBackground(config.background);
         if (config.gridConfig) store.setGridConfig(config.gridConfig);
+
+        // 2. 更新 widgets 配置
         if (config.widgets) {
           Object.entries(config.widgets).forEach(([key, value]) => {
             store.updateWidget(key, value);
           });
         }
-        if (config.layout) store.setLayout(config.layout);
+
+        // 3. 先导入快捷方式（直接使用 setState 替换，不使用 addShortcut 避免生成新 ID）
         if (config.shortcuts) {
-          config.shortcuts.forEach((shortcut) => {
-            store.addShortcut(shortcut);
-          });
+          useStore.setState({ shortcuts: config.shortcuts });
+        }
+
+        // 4. 最后导入布局（这样可以确保所有 widget 和 shortcut 都已经存在）
+        if (config.layout) {
+          store.setLayout(config.layout);
         }
 
         alert('配置导入成功！');
         onClose();
       } catch (error) {
+        console.error('[SettingsPanel] 导入配置失败:', error);
         alert('配置文件格式错误！');
       }
     };
