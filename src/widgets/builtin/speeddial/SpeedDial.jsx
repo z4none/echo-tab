@@ -32,14 +32,18 @@ function SpeedDial({ instanceId, config, manifest }) {
   const speedDialConfig = config || widgets.speeddial || { bindings: {} };
   const bindings = speedDialConfig.bindings || {};
 
-  // 当全局编辑模式退出时，自动退出 SpeedDial 的编辑模式
+  // 同步全局编辑模式和 SpeedDial 的编辑模式
   useEffect(() => {
-    if (!globalEditMode && isEditing) {
+    if (globalEditMode) {
+      // 全局编辑模式开启时，自动进入编辑模式
+      setIsEditing(true);
+    } else {
+      // 全局编辑模式退出时，自动退出编辑模式
       setIsEditing(false);
       setEditingKey(null);
       setEditingUrl('');
     }
-  }, [globalEditMode, isEditing]);
+  }, [globalEditMode]);
 
   // ESC 键关闭编辑弹窗
   useEffect(() => {
@@ -283,16 +287,7 @@ function SpeedDial({ instanceId, config, manifest }) {
     <div
       className={`${widgetStyles.containerClass} flex flex-col h-full relative group`}
       style={widgetStyles.containerStyle}
-      data-has-own-config="true"
     >
-      {/* 隐藏的触发按钮，供全局编辑模式的齿轮按钮调用 */}
-      <button
-        onClick={() => setIsEditing(!isEditing)}
-        className="speeddial-edit-btn absolute opacity-0 pointer-events-none"
-        aria-hidden="true"
-        tabIndex={-1}
-      />
-
       {/* 键盘布局 */}
       <div id="speeddial-container" className="flex-1 flex items-center justify-center overflow-hidden w-full">
         {/* 键盘区域 */}

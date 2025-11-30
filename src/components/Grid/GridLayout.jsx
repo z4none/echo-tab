@@ -288,6 +288,8 @@ const GridLayout = ({ onEditShortcut, onDeleteShortcut, onConfigWidget }) => {
 
     // Widget 实例显示配置和删除按钮
     const showActions = !!widgetInstance;
+    // SpeedDial 不显示配置按钮（在全局编辑模式下自动进入编辑状态）
+    const showConfig = showActions && widgetInstance?.type !== 'speeddial';
 
     return (
       <GridItem
@@ -307,7 +309,7 @@ const GridLayout = ({ onEditShortcut, onDeleteShortcut, onConfigWidget }) => {
         onResizeEnd={handleResizeEnd}
         isDragging={draggingItemId === id}
         isResizing={resizingItemId === id}
-        onConfig={showActions ? handleConfigWidget : null}
+        onConfig={showConfig ? handleConfigWidget : null}
         onDelete={showActions ? handleDeleteWidget : null}
       >
         {wrappedContent}
