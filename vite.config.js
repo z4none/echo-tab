@@ -6,6 +6,23 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   plugins: [
     react(),
+    // 自定义插件：注入统计脚本
+    {
+      name: 'inject-analytics',
+      transformIndexHtml(html) {
+        const analyticsUrl = process.env.VITE_ANALYTICS_URL
+        const websiteId = process.env.VITE_ANALYTICS_WEBSITE_ID
+
+        // 只在生产环境且配置了环境变量时注入
+        if (process.env.NODE_ENV === 'production' && analyticsUrl && websiteId) {
+          return html.replace(
+            '</head>',
+            `  <script defer src="${analyticsUrl}" data-website-id="${websiteId}"></script>\n  </head>`
+          )
+        }
+        return html
+      }
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
