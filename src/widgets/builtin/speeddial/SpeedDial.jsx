@@ -135,7 +135,7 @@ function SpeedDial({ instanceId, config, manifest }) {
 
         // 如果有绑定的 URL，打开它
         if (bindings[key]) {
-          window.open(bindings[key], '_blank');
+          window.location.href = bindings[key];
         }
       }
     };
@@ -242,7 +242,7 @@ function SpeedDial({ instanceId, config, manifest }) {
           if (isEditing) {
             startEditKey(key);
           } else if (hasBinding) {
-            window.open(bindings[lowerKey], '_blank');
+            window.location.href = bindings[lowerKey];
           }
         }}
       >
